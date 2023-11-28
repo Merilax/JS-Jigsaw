@@ -2,25 +2,25 @@ const boardDiv = document.getElementById("board");
 const piecesDiv = document.getElementById("piece-container");
 var puzzlePath, rows, cols, puzzleName, size, count;
 var pieces = [];
+var timeSpent;
 
 let selectedPuzzle = new URL(document.location).searchParams.get("name");
 document.body.onload = prepareGame(selectedPuzzle);
-document.body.addEventListener("dragover", (event) => event.preventDefault(), false ); // Allows to drag pieces all over document.
+document.body.addEventListener("dragover", (event) => event.preventDefault(), false); // Allows to drag pieces all over document.
 document.body.addEventListener("drop", (event) => drop(event), false); // Same
 
-async function prepareGame(puzzleName) {
-    puzzlePath = `puzzles/${puzzleName}`;
-
+async function prepareGame(selectedPuzzle) {
+    puzzlePath = `puzzles/${selectedPuzzle}`;
     // Get generic puzzle data
-    var puzzleData = await fetch(`${puzzlePath}/data.json`)
+    let puzzleJSON = await fetch(`${puzzlePath}/data.json`)
         .then((res) => res.json())
         .then((json) => { return json });
 
     // Init variables
-    rows = puzzleData.rows;
-    cols = puzzleData.columns;
+    rows = puzzleJSON.rows;
+    cols = puzzleJSON.columns;
     size = `${45 / cols}vw`;
-    puzzleName = puzzleData.name;
+    puzzleName = puzzleJSON.name;
     count = rows * cols;
 
     const originalImage = document.getElementById("original-image");
@@ -28,6 +28,9 @@ async function prepareGame(puzzleName) {
 
     generateBoard();
     generatePieces();
+
+    loadPuzzleData(puzzleName);
+    window.onbeforeunload = savePuzzleData(selectedPuzzle);
 }
 
 function generateBoard() {
@@ -38,7 +41,7 @@ function generateBoard() {
         const row = table.insertRow();
         for (let y = 1; y < cols + 1; y++) {
             const col = row.insertCell();
-            col.id = `cell,${x},${y}`;
+            col.id = `cell:${x}:${y}`;
             col.classList.add("cell");
             col.style.width = size;
             col.style.height = size;
@@ -65,7 +68,7 @@ function generatePieces() {
             piece.style.height = size;
             piece.style.left = `calc(${(Math.random() * boardDimensions.width) + boardDimensions.left}px - ${piece.style.width})`;
             piece.style.top = `calc(${(Math.random() * boardDimensions.height) + boardDimensions.top}px)`;
-            
+
             piece.toggleAttribute("draggable", true);
 
             piece.addEventListener("dragstart", (event) => {
@@ -73,7 +76,7 @@ function generatePieces() {
                 // Transfers ID, x and y positions.
                 event.dataTransfer.setData("data", `${piece.id},${parseInt(style.getPropertyValue("left"), 10) - event.clientX},${parseInt(style.getPropertyValue("top"), 10) - event.clientY}`);
             });
-            
+
             pieces.push(piece);
         }
     }
@@ -101,22 +104,25 @@ function validatePiece(event) {
     if (!targetCell.classList.contains("cell")) return;
 
     // Check if piece and cell IDs match, then append.
-    const expectedCell = document.getElementById(`cell,${pieceData[1]},${pieceData[2]}`);
-    if (targetCell === expectedCell) {
-        const pieceDiv = document.getElementById(pieceId);
-
-        pieceDiv.style.border = "none";
-        pieceDiv.style.position = "inherit";
-        pieceDiv.toggleAttribute("draggable", false);
-        pieceDiv.removeEventListener("dragstart", (event) => {
-            event.dataTransfer.setData("pieceId", piece.id);
-        });
-
-        targetCell.appendChild(pieceDiv);
-        count--;
-    }
-
+    const expectedCell = document.getElementById(`cell:${pieceData[1]}:${pieceData[2]}`);
+    if (targetCell === expectedCell) setPiece(targetCell, pieceId)
+    savePuzzleData();
     if (count === 0) { win(); }
+}
+
+function setPiece(targetCell, pieceId) {
+    const pieceDiv = document.getElementById(pieceId);
+
+    pieceDiv.style.border = "none";
+    pieceDiv.style.position = "inherit";
+    pieceDiv.toggleAttribute("draggable", false);
+    pieceDiv.removeEventListener("dragstart", (event) => {
+        event.dataTransfer.setData("pieceId", piece.id); // Not wrong
+    });
+    pieceDiv.classList.add("piece-set");
+
+    targetCell.appendChild(pieceDiv);
+    count--;
 }
 
 function win() {
@@ -130,6 +136,17 @@ function win() {
     }
 
     alert("Felicidades!");
+
+    let data = window.localStorage.getItem("savedPuzzleData");
+    json = JSON.parse(data);
+    let index = json.puzzles.findIndex((puzzle) => puzzle.name == puzzleName);
+    json.puzzles[index] = {
+        "name": puzzleName,
+        "timeSpent": 0,
+        "piecesSet": []
+    };
+    json = JSON.stringify(json);
+    localStorage.setItem("savedPuzzleData", json);
 }
 
 function drop(event) {
@@ -139,4 +156,84 @@ function drop(event) {
     piece.style.top = (event.clientY + parseInt(data[2], 10)) + 'px';
     event.preventDefault();
     return false;
+}
+
+function createPuzzleData(selectedPuzzle) {
+    var timeSpent = 0; // In seconds
+    setInterval(() => {
+        timeSpent++; // +1 Second
+    }, 1000);
+    let json = {
+        "puzzles": [
+            {
+                "name": selectedPuzzle,
+                "timeSpent": 0,
+                "piecesSet": []
+            }
+        ]
+    };
+
+    let data = JSON.stringify(json);
+    localStorage.setItem("savedPuzzleData", data);
+
+    return json;
+}
+
+function loadPuzzleData(selectedPuzzle) {
+    let json;
+    let data = localStorage.getItem("savedPuzzleData");
+
+    if (!data) json = createPuzzleData(selectedPuzzle);
+
+    json = JSON.parse(data);
+    if (!json.puzzles) json = createPuzzleData(selectedPuzzle);
+
+    if (!json.puzzles.find((puzzle) => puzzle.name === selectedPuzzle)) {
+
+        json.puzzles.push({
+            "name": selectedPuzzle,
+            "timeSpent": 0,
+            "piecesSet": []
+        });
+        let saved = JSON.stringify(json);
+        localStorage.setItem("savedPuzzleData", saved);
+    }
+
+    let puzzleData = json.puzzles.find((puzzle) => puzzle.name === selectedPuzzle);
+
+    puzzleData.piecesSet.forEach(pieceId => {
+        let id = pieceId.split(':');
+        //let piece = document.getElementById(`piece:${id[1]}:${id[2]}`);
+        let cell = document.getElementById(`cell:${id[1]}:${id[2]}`);
+        setPiece(cell, pieceId);
+    });
+
+    timeSpent = puzzleData.timeSpent; // In seconds
+    setInterval(() => {
+        timeSpent++; // +1 Second
+    }, 1000);
+}
+
+function savePuzzleData() {
+    let data = localStorage.getItem("savedPuzzleData");
+    if (!data) return;
+    console.log(data);
+    let json = JSON.parse(data);
+
+    let setPieces = document.getElementsByClassName("piece-set");
+
+    let arr = Array.from(setPieces);
+
+    for (let i = 0; i < arr.length; i++) { arr[i] = arr[i].id; }
+
+    let index = json.puzzles.findIndex((puzzle) => puzzle.name == puzzleName);
+    if (index === -1) return console.log("errIndex");
+    json.puzzles[index] = {
+        "name": puzzleName,
+        "timeSpent": timeSpent,
+        "piecesSet": arr
+    };
+
+    json = JSON.stringify(json);
+    localStorage.setItem("savedPuzzleData", json);
 }
