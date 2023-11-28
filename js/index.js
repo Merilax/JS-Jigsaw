@@ -29,7 +29,7 @@ async function load() {
         div.appendChild(img);
         div.appendChild(textDiv);
         textDiv.appendChild(title);
-        textDiv.appendChild(span);
+        div.appendChild(span);
 
         document.body.appendChild(div);
     });

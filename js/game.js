@@ -57,14 +57,15 @@ function generatePieces() {
     for (let x = 1; x < rows + 1; x++) {
         for (let y = 1; y < cols + 1; y++) {
             const piece = document.createElement("img");
+
             piece.id = `piece:${x}:${y}`;
             piece.classList.add("piece");
             piece.src = `${puzzlePath}/pieces/fila-${x}-columna-${y}.jpg`;
-            piece.style.padding = "5px";
             piece.style.width = size;
             piece.style.height = size;
             piece.style.left = `calc(${(Math.random() * boardDimensions.width) + boardDimensions.left}px - ${piece.style.width})`;
             piece.style.top = `calc(${(Math.random() * boardDimensions.height) + boardDimensions.top}px)`;
+            
             piece.toggleAttribute("draggable", true);
 
             piece.addEventListener("dragstart", (event) => {
@@ -104,7 +105,7 @@ function validatePiece(event) {
     if (targetCell === expectedCell) {
         const pieceDiv = document.getElementById(pieceId);
 
-        pieceDiv.style.padding = "0";
+        pieceDiv.style.border = "none";
         pieceDiv.style.position = "inherit";
         pieceDiv.toggleAttribute("draggable", false);
         pieceDiv.removeEventListener("dragstart", (event) => {
@@ -128,7 +129,7 @@ function win() {
         }
     }
 
-    alert("Win");
+    alert("Felicidades!");
 }
 
 function drop(event) {
