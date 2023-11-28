@@ -5,7 +5,8 @@ var pieces = [];
 
 let selectedPuzzle = new URL(document.location).searchParams.get("name");
 document.body.onload = prepareGame(selectedPuzzle);
-
+document.body.addEventListener("dragover", (event) => event.preventDefault(), false ); // Allows to drag pieces all over document.
+document.body.addEventListener("drop", (event) => drop(event), false); // Same
 
 async function prepareGame(puzzleName) {
     puzzlePath = `puzzles/${puzzleName}`;
@@ -18,8 +19,7 @@ async function prepareGame(puzzleName) {
     // Init variables
     rows = puzzleData.rows;
     cols = puzzleData.columns;
-    size = `${45/cols}vw`;
-    console.log(size);
+    size = `${45 / cols}vw`;
     puzzleName = puzzleData.name;
     count = rows * cols;
 
@@ -52,21 +52,27 @@ function generateBoard() {
 }
 
 function generatePieces() {
+    const boardDimensions = document.getElementById("piece-container").getBoundingClientRect();
+
     for (let x = 1; x < rows + 1; x++) {
         for (let y = 1; y < cols + 1; y++) {
             const piece = document.createElement("img");
-            piece.id = `piece,${x},${y}`;
+            piece.id = `piece:${x}:${y}`;
             piece.classList.add("piece");
             piece.src = `${puzzlePath}/pieces/fila-${x}-columna-${y}.jpg`;
             piece.style.padding = "5px";
             piece.style.width = size;
             piece.style.height = size;
+            piece.style.left = `calc(${(Math.random() * boardDimensions.width) + boardDimensions.left}px - ${piece.style.width})`;
+            piece.style.top = `calc(${(Math.random() * boardDimensions.height) + boardDimensions.top}px)`;
             piece.toggleAttribute("draggable", true);
 
             piece.addEventListener("dragstart", (event) => {
-                event.dataTransfer.setData("pieceId", piece.id);
+                let style = window.getComputedStyle(event.target, null);
+                // Transfers ID, x and y positions.
+                event.dataTransfer.setData("data", `${piece.id},${parseInt(style.getPropertyValue("left"), 10) - event.clientX},${parseInt(style.getPropertyValue("top"), 10) - event.clientY}`);
             });
-
+            
             pieces.push(piece);
         }
     }
@@ -83,8 +89,8 @@ function generatePieces() {
 function validatePiece(event) {
     event.preventDefault();
 
-    const pieceId = event.dataTransfer.getData("pieceId");
-    pieceData = pieceId.split(',');
+    const pieceId = event.dataTransfer.getData("data").split(',')[0];
+    pieceData = pieceId.split(':');
 
     // Return if element dragged is not a piece
     if (pieceData[0] !== "piece") return;
@@ -97,7 +103,14 @@ function validatePiece(event) {
     const expectedCell = document.getElementById(`cell,${pieceData[1]},${pieceData[2]}`);
     if (targetCell === expectedCell) {
         const pieceDiv = document.getElementById(pieceId);
+
         pieceDiv.style.padding = "0";
+        pieceDiv.style.position = "inherit";
+        pieceDiv.toggleAttribute("draggable", false);
+        pieceDiv.removeEventListener("dragstart", (event) => {
+            event.dataTransfer.setData("pieceId", piece.id);
+        });
+
         targetCell.appendChild(pieceDiv);
         count--;
     }
@@ -118,3 +131,11 @@ function win() {
     alert("Win");
 }
 
+function drop(event) {
+    var data = event.dataTransfer.getData("data").split(',');
+    var piece = document.getElementById(data[0]);
+    piece.style.left = (event.clientX + parseInt(data[1], 10)) + 'px';
+    piece.style.top = (event.clientY + parseInt(data[2], 10)) + 'px';
+    event.preventDefault();
+    return false;
+}
