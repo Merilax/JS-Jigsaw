@@ -30,7 +30,7 @@ async function prepareGame(selectedPuzzle) {
     generatePieces();
 
     loadPuzzleData(puzzleName);
-    window.onbeforeunload = savePuzzleData(selectedPuzzle);
+    window.addEventListener("beforeunload", (event) => savePuzzleData(event));
 }
 
 function generateBoard() {
@@ -106,7 +106,7 @@ function validatePiece(event) {
     // Check if piece and cell IDs match, then append.
     const expectedCell = document.getElementById(`cell:${pieceData[1]}:${pieceData[2]}`);
     if (targetCell === expectedCell) setPiece(targetCell, pieceId)
-    savePuzzleData();
+    
     if (count === 0) { win(); }
 }
 
@@ -135,11 +135,14 @@ function win() {
         }
     }
 
-    alert("Felicidades!");
+    
 
     let data = window.localStorage.getItem("savedPuzzleData");
     json = JSON.parse(data);
     let index = json.puzzles.findIndex((puzzle) => puzzle.name == puzzleName);
+    
+    alert(`Felicidades!\nTiempo empleado: ${json.puzzles[index].timeSpent}s (Pendiente implementar reloj)`);
+    
     json.puzzles[index] = {
         "name": puzzleName,
         "timeSpent": 0,
@@ -159,10 +162,6 @@ function drop(event) {
 }
 
 function createPuzzleData(selectedPuzzle) {
-    var timeSpent = 0; // In seconds
-    setInterval(() => {
-        timeSpent++; // +1 Second
-    }, 1000);
     let json = {
         "puzzles": [
             {
@@ -189,7 +188,6 @@ function loadPuzzleData(selectedPuzzle) {
     if (!json.puzzles) json = createPuzzleData(selectedPuzzle);
 
     if (!json.puzzles.find((puzzle) => puzzle.name === selectedPuzzle)) {
-
         json.puzzles.push({
             "name": selectedPuzzle,
             "timeSpent": 0,
@@ -208,13 +206,16 @@ function loadPuzzleData(selectedPuzzle) {
         setPiece(cell, pieceId);
     });
 
-    timeSpent = puzzleData.timeSpent; // In seconds
-    setInterval(() => {
+    timeSpent = puzzleData.timeSpent;
+    setInterval(() => {// In seconds
         timeSpent++; // +1 Second
+        //console.log(timeSpent);
     }, 1000);
+
+    //startTimer(puzzleData.timeSpent);
 }
 
-function savePuzzleData() {
+function savePuzzleData(event) {
     let data = localStorage.getItem("savedPuzzleData");
     if (!data) return;
     console.log(data);
@@ -228,6 +229,7 @@ function savePuzzleData() {
 
     let index = json.puzzles.findIndex((puzzle) => puzzle.name == puzzleName);
     if (index === -1) return console.log("errIndex");
+    console.log(timeSpent);
     json.puzzles[index] = {
         "name": puzzleName,
         "timeSpent": timeSpent,
@@ -236,4 +238,17 @@ function savePuzzleData() {
 
     json = JSON.stringify(json);
     localStorage.setItem("savedPuzzleData", json);
+
+    //event.preventDefault();
+    //event.returnValue = "Tu progreso ha sido guardado."; // Legacy
+}
+
+function startTimer(seconds) {
+    const today = new Date();
+    //let h = today.getHours();
+    let m = today.getMinutes();
+    let s = today.getSeconds();
+    m = checkTime(m);
+    s = checkTime(s);
+    // TODO
 }
