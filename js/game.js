@@ -135,19 +135,24 @@ function win() {
         }
     }
 
-    
-
     let data = window.localStorage.getItem("savedPuzzleData");
     json = JSON.parse(data);
     let index = json.puzzles.findIndex((puzzle) => puzzle.name == puzzleName);
     
     alert(`Felicidades!\nTiempo empleado: ${json.puzzles[index].timeSpent}s (Pendiente implementar reloj)`);
-    
+    console.log(json.puzzles[index] );
     json.puzzles[index] = {
         "name": puzzleName,
         "timeSpent": 0,
         "piecesSet": []
     };
+
+    let setPieces = document.getElementsByClassName("piece-set");
+    for (let i = setPieces.length-1; i >= 0; i--) {
+        setPieces.item(i).classList.remove("piece-set");
+    }
+
+    console.log(json.puzzles[index] );
     json = JSON.stringify(json);
     localStorage.setItem("savedPuzzleData", json);
 }
